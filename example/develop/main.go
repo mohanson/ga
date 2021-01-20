@@ -9,17 +9,30 @@ import (
 	"github.com/mohanson/ga"
 )
 
+// Gene is a basic unit of heredity.
 type Gene interface {
-	Random()
+	Rand()
 	Copy() Gene
-	Not()
+}
+
+// Genome is all genetic material of an organism.
+type Genemo struct {
+	Gene []Gene
+}
+
+func (g *Genemo) Copy() *Genemo {
+	gene := make([]Gene, len(g.Gene))
+	for i := 0; i < len(g.Gene); i++ {
+		gene[i] = g.Gene[i].Copy()
+	}
+	return &Genemo{Gene: gene}
 }
 
 type GeneBinary struct {
 	X uint8
 }
 
-func (g *GeneBinary) Random() {
+func (g *GeneBinary) Rand() {
 	g.X = uint8(rand.Int() & 1)
 }
 
@@ -27,10 +40,6 @@ func (g *GeneBinary) Copy() Gene {
 	return &GeneBinary{
 		X: g.X,
 	}
-}
-
-func (g *GeneBinary) Not() {
-	g.X ^= 1
 }
 
 func (g *GeneBinary) String() string {
@@ -50,18 +59,6 @@ func NewGeneBinary() Gene {
 var (
 	_ Gene = (*GeneBinary)(nil)
 )
-
-type Genemo struct {
-	Gene []Gene
-}
-
-func (g *Genemo) Copy() *Genemo {
-	gene := make([]Gene, len(g.Gene))
-	for i := 0; i < len(g.Gene); i++ {
-		gene[i] = g.Gene[i].Copy()
-	}
-	return &Genemo{Gene: gene}
-}
 
 type GAsOption struct {
 	GenemoSize int
@@ -144,7 +141,7 @@ func (g *GAs) Run() {
 		for i := 0; i < g.Option.PopSize; i++ {
 			for j := 0; j < g.Option.GenemoSize; j++ {
 				if rand.Float64() < g.Option.PM {
-					chdPop[i].Gene[j].Random()
+					chdPop[i].Gene[j].Rand()
 				}
 			}
 		}
