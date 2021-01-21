@@ -7,6 +7,9 @@ import (
 	"github.com/mohanson/ga"
 )
 
+// Find the maximum value of the function:
+// F(x) = sin(10 * x) * x + cos(2 * x) * x, x in [0, 5]
+
 func main() {
 	gas := ga.GAs{
 		Option: ga.GAsOption{
@@ -26,16 +29,8 @@ func main() {
 			},
 			Trigger: func(g *ga.GAs) {
 				log.Println("Generation", g.Generation)
-				maxFitness := 0.0
-				maxIndividualIndex := 0
-				for i := 0; i < g.Option.PopSize; i++ {
-					f := g.Fitness[i]
-					if f > maxFitness {
-						maxFitness = f
-						maxIndividualIndex = i
-					}
-				}
-				log.Println(g.Option.Fitness(g.Population[maxIndividualIndex]))
+				i := ga.FindArgMax(g.Fitness)
+				log.Println("Individual", g.Option.Fitness(g.Population[i]))
 			},
 		},
 	}
