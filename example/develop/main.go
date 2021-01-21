@@ -9,120 +9,85 @@ import (
 	"github.com/mohanson/ga"
 )
 
-// Gene is a basic unit of heredity.
-type Gene interface {
-	Rand()
-	Copy() Gene
-}
-
 // Genome is all genetic material of an organism.
 type Genemo struct {
-	Gene []Gene
+	Locus []uint64
 }
 
+// Copy Genome.
 func (g *Genemo) Copy() *Genemo {
-	gene := make([]Gene, len(g.Gene))
-	for i := 0; i < len(g.Gene); i++ {
-		gene[i] = g.Gene[i].Copy()
-	}
-	return &Genemo{Gene: gene}
+	d := make([]uint64, g.Size())
+	copy(d, g.Locus)
+	return &Genemo{d}
 }
 
-type GeneBinary struct {
-	X uint8
+// Size returns size of genemo.
+func (g *Genemo) Size() int {
+	return len(g.Locus)
 }
 
-func (g *GeneBinary) Rand() {
-	g.X = uint8(rand.Int() & 1)
-}
-
-func (g *GeneBinary) Copy() Gene {
-	return &GeneBinary{
-		X: g.X,
-	}
-}
-
-func (g *GeneBinary) String() string {
-	if g.X == 1 {
-		return "1"
-	} else {
-		return "0"
-	}
-}
-
-func NewGeneBinary() Gene {
-	return &GeneBinary{
-		X: uint8(rand.Int() & 1),
-	}
-}
-
-var (
-	_ Gene = (*GeneBinary)(nil)
-)
-
+// GAsOption.
 type GAsOption struct {
-	GenemoSize int
-	PopSize    int
-	MaxIter    int
-	PC         float64
-	PM         float64
-	NewGene    func() Gene
-	Fitness    func(*Genemo) float64
+	GenemoSize int                   // Size of genemo
+	PopSize    int                   // Population size
+	MaxIter    int                   // Number of evolutionary iterations
+	PC         float64               // Crossover rate
+	PM         float64               // Mutation rate
+	Fitness    func(*Genemo) float64 // Fitness function
+	Trigger    func(*GAs)            // Called every iteration
 }
 
+// GAs.
 type GAs struct {
 	Option     GAsOption
-	Pop        []*Genemo
-	AbsFitness []float64
-	RelFitness []float64
+	Generation int
+	Population []*Genemo
 }
 
 func (g *GAs) Run() {
 	rand.Seed(time.Now().UnixNano())
 
-	g.Pop = make([]*Genemo, g.Option.PopSize)
-	g.AbsFitness = make([]float64, g.Option.PopSize)
-	g.RelFitness = make([]float64, g.Option.PopSize)
+	// The population size depends on the nature of the problem, but typically contains several hundreds or thousands of
+	// possible solutions. Often, the initial population is generated randomly, allowing the entire range of possible
+	// solutions (the search space). Occasionally, the solutions may be "seeded" in areas where optimal solutions are
+	// likely to be found.
+	g.Population = make([]*Genemo, g.Option.PopSize)
 	for i := 0; i < g.Option.PopSize; i++ {
-		genemo := make([]Gene, g.Option.GenemoSize)
+		locus := make([]uint64, g.Option.GenemoSize)
 		for j := 0; j < g.Option.GenemoSize; j++ {
-			genemo[j] = g.Option.NewGene()
+			locus[j] = rand.Uint64()
 		}
-		g.Pop[i] = &Genemo{Gene: genemo}
+		g.Population[i] = &Genemo{Locus: locus}
 	}
-	for t := 0; t < g.Option.MaxIter; t++ {
-		log.Println("T", t)
-		maxFitness := -math.MaxFloat64
+
+	allFitness := make([]float64, g.Option.PopSize)
+	for ; g.Generation < g.Option.MaxIter; g.Generation++ {
+		g.Option.Trigger(g)
+
 		minFitness := math.MaxFloat64
 		for i := 0; i < g.Option.PopSize; i++ {
-			f := g.Option.Fitness(g.Pop[i])
-			g.AbsFitness[i] = f
-			if f > maxFitness {
-				maxFitness = f
-			}
+			f := g.Option.Fitness(g.Population[i])
+			allFitness[i] = f
 			if f < minFitness {
 				minFitness = f
 			}
 		}
-		log.Println("Max", maxFitness)
 		for i := 0; i < g.Option.PopSize; i++ {
-			g.RelFitness[i] = g.AbsFitness[i] - minFitness
+			allFitness[i] = allFitness[i] - minFitness
 		}
-
 		cntFitness := 0.0
 		for i := 0; i < g.Option.PopSize; i++ {
-			cntFitness += g.RelFitness[i]
+			cntFitness += allFitness[i]
 		}
-
 		chdPop := make([]*Genemo, g.Option.PopSize)
 		for i := 0; i < g.Option.PopSize; i++ {
 			dp := rand.Float64() * cntFitness
 			for j := 0; j < g.Option.PopSize; j++ {
-				if dp <= g.RelFitness[j] {
-					chdPop[i] = g.Pop[j].Copy()
+				if dp <= allFitness[j] {
+					chdPop[i] = g.Population[j].Copy()
 					break
 				} else {
-					dp -= g.RelFitness[j]
+					dp -= allFitness[j]
 				}
 			}
 		}
@@ -131,9 +96,9 @@ func (g *GAs) Run() {
 			if rand.Float64() < g.Option.PC {
 				jcd := rand.Int()%(g.Option.GenemoSize) + 1
 				for j := 0; j < jcd; j++ {
-					a := chdPop[2*i].Gene[j].Copy()
-					chdPop[2*i].Gene[j] = chdPop[2*i+1].Gene[j].Copy()
-					chdPop[2*i+1].Gene[j] = a
+					a := chdPop[2*i].Locus[j]
+					chdPop[2*i].Locus[j] = chdPop[2*i+1].Locus[j]
+					chdPop[2*i+1].Locus[j] = a
 				}
 			}
 		}
@@ -141,17 +106,15 @@ func (g *GAs) Run() {
 		for i := 0; i < g.Option.PopSize; i++ {
 			for j := 0; j < g.Option.GenemoSize; j++ {
 				if rand.Float64() < g.Option.PM {
-					chdPop[i].Gene[j].Rand()
+					chdPop[i].Locus[j] = rand.Uint64()
 				}
 			}
 		}
 
-		copy(g.Pop, chdPop)
+		copy(g.Population, chdPop)
 
 	}
 }
-
-// f(x)=sin(10x) * x + cos(2x) * x
 
 func main() {
 	gas := GAs{
@@ -161,17 +124,29 @@ func main() {
 			MaxIter:    200,
 			PC:         0.5,
 			PM:         0.005,
-			NewGene:    NewGeneBinary,
 			Fitness: func(g *Genemo) float64 {
 				var c uint32 = 0
 				for i := 0; i < 10; i++ {
-					a := g.Gene[i].(*GeneBinary)
-					c |= uint32(a.X) << i
+					a := g.Locus[i] & 1
+					c |= uint32(a) << i
 				}
 				f := float64(ga.GraycodeDecode(c)) / 1023 * 5
 				return math.Sin(10*f)*f + math.Cos(2*f)*f
 			},
+			Trigger: func(g *GAs) {
+				log.Println("Generation", g.Generation)
+			},
 		},
 	}
 	gas.Run()
+
+	max := 0.0
+	for i := 0; i < gas.Option.PopSize; i++ {
+		n := gas.Option.Fitness(gas.Population[i])
+		if n > max {
+			max = n
+		}
+	}
+	log.Println(max)
+
 }
