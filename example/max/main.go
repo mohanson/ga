@@ -4,11 +4,17 @@ import (
 	"log"
 	"math"
 
+	"github.com/mohanson/doa"
 	"github.com/mohanson/ga"
 )
 
 // Find the maximum value of the function:
 // F(x) = sin(10 * x) * x + cos(2 * x) * x, x in [0, 5]
+
+func f(x float64) float64 {
+	doa.Doa2(x >= 0, x <= 5)
+	return math.Sin(10*x)*x + math.Cos(2*x)*x
+}
 
 func main() {
 	gas := ga.GAs{
@@ -19,18 +25,20 @@ func main() {
 			PC:         0.5,
 			PM:         0.005,
 			Fitness: func(g *ga.Genemo) float64 {
-				var c uint32 = 0
+				var c uint64 = 0
 				for i := 0; i < 10; i++ {
 					a := g.Locus[i] & 1
-					c |= uint32(a) << i
+					c |= a << i
 				}
-				f := float64(ga.GraycodeDecode(c)) / 1023 * 5
-				return math.Sin(10*f)*f + math.Cos(2*f)*f
+				x := float64(ga.GraycodeDecode(c)) / 1023 * 5
+				return f(x)
 			},
 			Trigger: func(g *ga.GAs) {
-				log.Println("Generation", g.Generation)
-				i := ga.FindArgMax(g.Fitness)
-				log.Println("Individual", g.Option.Fitness(g.Population[i]))
+				if g.Generation%10 == 0 {
+					log.Println("Generation", g.Generation)
+					i := ga.FindArgMax(g.Fitness)
+					log.Println("Individual", g.Option.Fitness(g.Population[i]))
+				}
 			},
 		},
 	}

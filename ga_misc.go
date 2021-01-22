@@ -1,10 +1,11 @@
 package ga
 
-func GraycodeEncode(x uint32) uint32 {
+func GraycodeEncode(x uint64) uint64 {
 	return x ^ (x >> 1)
 }
 
-func GraycodeDecode(x uint32) uint32 {
+func GraycodeDecode(x uint64) uint64 {
+	x ^= x >> 32
 	x ^= x >> 16
 	x ^= x >> 8
 	x ^= x >> 4
