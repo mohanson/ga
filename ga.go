@@ -28,10 +28,10 @@ func (g *Genemo) Size() int {
 // GAsOption.
 type GAsOption struct {
 	GenemoSize int                   // Size of genemo
-	PopSize    int                   // Population size
-	MaxIter    int                   // Number of evolutionary iterations
-	PC         float64               // Crossover rate
-	PM         float64               // Mutation rate
+	PopSize    int                   // Population size, usually in [20, 100]
+	MaxIter    int                   // Number of evolutionary iterations, usually in [100, 500]
+	PC         float64               // Crossover rate, usually in [0.4, 0.99]
+	PM         float64               // Mutation rate, usually in [0.0001, 0.1]
 	Fitness    func(*Genemo) float64 // Fitness function
 	Trigger    func(*GAs)            // Called every iteration
 }
