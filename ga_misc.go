@@ -37,3 +37,29 @@ func FindArgMin(x []float64) int {
 	}
 	return si
 }
+
+func ArgSort(x []float64) []int {
+	n := len(x)
+	a := make([]float64, n)
+	copy(a, x)
+	r := make([]int, len(x))
+	for i := 0; i < n; i++ {
+		r[i] = i
+	}
+	if n < 2 {
+		return r
+	}
+	for i := 1; i < n; i++ {
+		v := a[i]
+		b := r[i]
+		k := i - 1
+		for k >= 0 && v < a[k] {
+			a[k+1] = a[k]
+			r[k+1] = r[k]
+			k--
+		}
+		a[k+1] = v
+		r[k+1] = b
+	}
+	return r
+}

@@ -27,13 +27,14 @@ func (g *Genemo) Size() int {
 
 // GAsOption.
 type GAsOption struct {
-	GenemoSize int                   // Size of genemo
-	PopSize    int                   // Population size
-	MaxIter    int                   // Number of evolutionary iterations
-	PC         float64               // Crossover rate
-	PM         float64               // Mutation rate
-	Fitness    func(*Genemo) float64 // Fitness function
-	Trigger    func(*GAs)            // Called every iteration
+	GenemoSize     int                   // Size of genemo
+	PopSize        int                   // Population size, usually in [20, 100]
+	MaxIter        int                   // Number of evolutionary iterations, usually in [100, 500]
+	PC             float64               // Crossover rate, usually in [0.4, 0.99]
+	PM             float64               // Mutation rate, usually in [0.0001, 0.1]
+	Fitness        func(*Genemo) float64 // Fitness function
+	FitnessScaling int                   // Fitness scaling function
+	Trigger        func(*GAs)            // Called every iteration
 }
 
 // GAs.
@@ -62,17 +63,51 @@ func GAsInitialize(g *GAs) {
 
 // Measure the fitness of each individual.
 func GAsFitnessMessure(g *GAs) {
-	minFitness := math.MaxFloat64
 	for i := 0; i < g.Option.PopSize; i++ {
 		f := g.Option.Fitness(g.Population[i])
 		g.Fitness[i] = f
-		if f < minFitness {
-			minFitness = f
-		}
 	}
+}
+
+const (
+	FitnessScalingRank = 0
+	FitnessScalingCmin = 1
+)
+
+// Fitness scaling converts the raw fitness scores that are returned by the fitness function to values in a range that
+// is suitable for the selection function. The selection function uses the scaled fitness values to select the parents
+// of the next generation. The selection function assigns a higher probability of selection to individuals with higher
+// scaled values.
+func GAsFitnessScaling(g *GAs) {
+	doa.Doa1(g.Option.FitnessScaling < 2)
+	switch g.Option.FitnessScaling {
+	case FitnessScalingRank:
+		GAsFitnessScalingRank(g)
+	case FitnessScalingCmin:
+		GAsFitnessScalingCmin(g)
+	}
+}
+
+// The simplest scaling algorithm.
+func GAsFitnessScalingCmin(g *GAs) {
+	minFitness := g.Fitness[FindArgMin(g.Fitness)]
 	for i := 0; i < g.Option.PopSize; i++ {
 		g.Fitness[i] -= minFitness
 		doa.Doa1(g.Fitness[i] >= 0)
+	}
+}
+
+// Rank, scales the raw scores based on the rank of each individual instead of its score. The rank of an individual is
+// its position in the sorted scores: the rank of the most fit individual is 1, the next most fit is 2, and so on. The
+// rank scaling function assigns scaled values so that the scaled value of an individual with rank n is proportional
+// to 1/sqrt(n).
+//
+// https://www.mathworks.com/help/gads/fitness-scaling.html
+func GAsFitnessScalingRank(g *GAs) {
+	s := ArgSort(g.Fitness)
+	for i := 0; i < g.Option.PopSize; i++ {
+		f := 1.0 / math.Sqrt(float64(g.Option.PopSize-i))
+		g.Fitness[s[i]] = f
 	}
 }
 
@@ -148,6 +183,7 @@ func (g *GAs) Run() {
 	GAsInitialize(g)
 	for ; g.Generation < g.Option.MaxIter; g.Generation++ {
 		GAsFitnessMessure(g)
+		GAsFitnessScaling(g)
 		g.Option.Trigger(g)
 		GAsSelect(g)
 		GAsCrossover(g)
