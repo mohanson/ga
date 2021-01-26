@@ -38,6 +38,8 @@ func FindArgMin(x []float64) int {
 	return si
 }
 
+// ArgSort returns the indices that would sort an array.
+// https://numpy.org/doc/stable/reference/generated/numpy.argsort.html
 func ArgSort(x []float64) []int {
 	n := len(x)
 	a := make([]float64, n)
