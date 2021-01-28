@@ -1,9 +1,9 @@
 package ga
 
 import (
+	"log"
 	"math"
 	"math/rand"
-	"time"
 
 	"github.com/mohanson/doa"
 )
@@ -27,22 +27,37 @@ func (g *Genemo) Size() int {
 
 // GAsOption.
 type GAsOption struct {
-	GenemoSize     int                   // Size of genemo
-	PopSize        int                   // Population size, usually in [20, 100]
-	MaxIter        int                   // Number of evolutionary iterations, usually in [100, 500]
-	PC             float64               // Crossover rate, usually in [0.4, 0.99]
-	PM             float64               // Mutation rate, usually in [0.0001, 0.1]
-	Fitness        func(*Genemo) float64 // Fitness function
-	FitnessScaling int                   // Fitness scaling function
-	Trigger        func(*GAs)            // Called every iteration
+	// Basic operating parameters. Genemo is an array of uint64.
+	GenemoSize int
+	// Basic operating parameters. Population size, usually from 20 to 100.
+	PopSize int
+	// Basic operating parameters. Number of evolutionary iterations, usually from 100 to 500.
+	MaxIter int
+	// Basic operating parameters. Crossover rate, usually from 0.4 to 0.99.
+	PC float64
+	// Basic operating parameters. Mutation rate, usually from 0.0001 to 0.1.
+	PM float64
+
+	// Necessary parameters. Fitness.
+	Fitness func(*Genemo) float64
+	// Necessary parameters. Fitness scaling type.
+	FitnessScaling int
+
+	// Seed of random number generator.
+	Seed int64
+
+	// A callback function is triggered every time a new generation is generated.
+	Trigger func(*GAs)
 }
 
 // GAs.
 type GAs struct {
-	Option     GAsOption
-	Generation int
-	Population []*Genemo
-	Fitness    []float64
+	Option                GAsOption
+	Generation            int
+	Population            []*Genemo
+	BestIndividual        *Genemo
+	BestIndividualFieness float64
+	Fitness               []float64
 }
 
 // The population size depends on the nature of the problem, but typically contains several hundreds or thousands of
@@ -66,6 +81,15 @@ func GAsFitnessMessure(g *GAs) {
 	for i := 0; i < g.Option.PopSize; i++ {
 		f := g.Option.Fitness(g.Population[i])
 		g.Fitness[i] = f
+	}
+	i := FindArgMax(g.Fitness)
+	if g.BestIndividual == nil {
+		g.BestIndividual = g.Population[i].Copy()
+		g.BestIndividualFieness = g.Fitness[i]
+	}
+	if g.Fitness[i] > g.BestIndividualFieness {
+		g.BestIndividual = g.Population[i].Copy()
+		g.BestIndividualFieness = g.Fitness[i]
 	}
 }
 
@@ -179,14 +203,23 @@ func GAsMutate(g *GAs) {
 // Start a cruel survival competition.
 func (g *GAs) Run() {
 	doa.Doa1(g.Option.PopSize&1 == 0)
-	rand.Seed(time.Now().UnixNano())
+	if g.Option.Seed != 0 {
+		rand.Seed(g.Option.Seed)
+	}
+	if g.Option.Trigger == nil {
+		g.Option.Trigger = func(g *GAs) {
+			log.Printf("G=%d F=%f\n", g.Generation, g.BestIndividualFieness)
+		}
+	}
 	GAsInitialize(g)
+	GAsFitnessMessure(g)
+	GAsFitnessScaling(g)
 	for ; g.Generation < g.Option.MaxIter; g.Generation++ {
-		GAsFitnessMessure(g)
-		GAsFitnessScaling(g)
 		g.Option.Trigger(g)
 		GAsSelect(g)
 		GAsCrossover(g)
 		GAsMutate(g)
+		GAsFitnessMessure(g)
+		GAsFitnessScaling(g)
 	}
 }
