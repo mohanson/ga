@@ -40,9 +40,9 @@ type GAsOption struct {
 
 	// Necessary parameters. Fitness.
 	Fitness func(*Genemo) float64
-	// Necessary parameters. Fitness scaling type.
-	FitnessScaling int
 
+	// Selection operator.
+	SelectionOperator int
 	// The optimal retention strategy refers to the selection, crossover and mutation of the best individuals in the
 	// group directly into the next generation to avoid the loss of outstanding individuals.
 	MaintainTheBestIndividual bool
@@ -99,32 +99,57 @@ func GAsFitnessMessure(g *GAs) {
 	}
 }
 
-const (
-	FitnessScalingRank = 0
-	FitnessScalingCmin = 1
-)
-
-// Fitness scaling converts the raw fitness scores that are returned by the fitness function to values in a range that
-// is suitable for the selection function. The selection function uses the scaled fitness values to select the parents
-// of the next generation. The selection function assigns a higher probability of selection to individuals with higher
-// scaled values.
-func GAsFitnessScaling(g *GAs) {
-	doa.Doa1(g.Option.FitnessScaling < 2)
-	switch g.Option.FitnessScaling {
-	case FitnessScalingRank:
-		GAsFitnessScalingRank(g)
-	case FitnessScalingCmin:
-		GAsFitnessScalingCmin(g)
+// During each successive generation, a portion of the existing population is selected to breed a new generation.
+// Individual solutions are selected through a fitness-based process, where fitter solutions (as measured by a fitness
+// function) are typically more likely to be selected. Certain selection methods rate the fitness of each solution and
+// preferentially select the best solutions. Other methods rate only a random sample of the population, as the former
+// process may be very time-consuming.
+func GAsSelect(g *GAs) {
+	doa.Doa1(g.Option.SelectionOperator < 3)
+	switch g.Option.SelectionOperator {
+	case 0:
+		GAsSelectRanked(g)
+	case 1:
+		GAsSelectProportional(g)
+	case 2:
+		GAsSelectStochastic(g)
 	}
 }
 
-// The simplest scaling algorithm.
-func GAsFitnessScalingCmin(g *GAs) {
-	minFitness := g.Fitness[FindArgMin(g.Fitness)]
+// The Roulette algorithm, that requires every fitness must be greater than or equal to 0.
+func GAsSelectCommonRoulette(g *GAs, f []float64) {
+	cntFitness := 0.0
 	for i := 0; i < g.Option.PopSize; i++ {
-		g.Fitness[i] -= minFitness
-		doa.Doa1(g.Fitness[i] >= 0)
+		cntFitness += f[i]
 	}
+	generation := make([]Genemo, g.Option.PopSize)
+	for i := 0; i < g.Option.PopSize; i++ {
+		bullet := rand.Float64() * cntFitness
+		for j := 0; j < g.Option.PopSize; j++ {
+			if bullet > f[j] {
+				bullet -= f[j]
+			} else {
+				generation[i] = g.Population[j].Copy()
+				break
+			}
+		}
+	}
+	g.Population = generation
+}
+
+// The proportional selection algorithm is a replay random sampling algorithm, and its characteristic is that the
+// probability of being selected is proportional to the fitness.
+func GAsSelectProportional(g *GAs) {
+	// Fitness scaling converts the raw fitness scores that are returned by the fitness function to values in a range
+	// that is suitable for the selection function. The selection function uses the scaled fitness values to select the
+	// parents of the next generation. The selection function assigns a higher probability of selection to individuals
+	// with higher scaled values.
+	minFitness := g.Fitness[FindArgMin(g.Fitness)]
+	relFitness := make([]float64, g.Option.PopSize)
+	for i := 0; i < g.Option.PopSize; i++ {
+		relFitness[i] = g.Fitness[i] - minFitness
+	}
+	GAsSelectCommonRoulette(g, relFitness)
 }
 
 // Rank, scales the raw scores based on the rank of each individual instead of its score. The rank of an individual is
@@ -133,34 +158,27 @@ func GAsFitnessScalingCmin(g *GAs) {
 // to 1/sqrt(n).
 //
 // https://www.mathworks.com/help/gads/fitness-scaling.html
-func GAsFitnessScalingRank(g *GAs) {
+func GAsSelectRanked(g *GAs) {
+	relFitness := make([]float64, g.Option.PopSize)
 	s := ArgSort(g.Fitness)
 	for i := 0; i < g.Option.PopSize; i++ {
 		f := 1.0 / math.Sqrt(float64(g.Option.PopSize-i))
-		g.Fitness[s[i]] = f
+		relFitness[s[i]] = f
 	}
+	GAsSelectCommonRoulette(g, relFitness)
 }
 
-// During each successive generation, a portion of the existing population is selected to breed a new generation.
-// Individual solutions are selected through a fitness-based process, where fitter solutions (as measured by a fitness
-// function) are typically more likely to be selected. Certain selection methods rate the fitness of each solution and
-// preferentially select the best solutions. Other methods rate only a random sample of the population, as the former
-// process may be very time-consuming.
-func GAsSelect(g *GAs) {
-	cntFitness := 0.0
-	for i := 0; i < g.Option.PopSize; i++ {
-		cntFitness += g.Fitness[i]
-	}
+// Stochastic tournament model. It randomly selects 2 individuals at a time, and then the individuals with higher
+// fitness are passed on to the next generation.
+func GAsSelectStochastic(g *GAs) {
 	generation := make([]Genemo, g.Option.PopSize)
 	for i := 0; i < g.Option.PopSize; i++ {
-		bullet := rand.Float64() * cntFitness
-		for j := 0; j < g.Option.PopSize; j++ {
-			if bullet > g.Fitness[j] {
-				bullet -= g.Fitness[j]
-			} else {
-				generation[i] = g.Population[j].Copy()
-				break
-			}
+		a := rand.Int() % g.Option.PopSize
+		b := rand.Int() % g.Option.PopSize
+		if g.Fitness[a] > g.Fitness[b] {
+			generation[i] = g.Population[a].Copy()
+		} else {
+			generation[i] = g.Population[b].Copy()
 		}
 	}
 	g.Population = generation
@@ -219,13 +237,11 @@ func (g *GAs) Run() {
 	}
 	GAsInitialize(g)
 	GAsFitnessMessure(g)
-	GAsFitnessScaling(g)
 	for ; g.Generation < g.Option.MaxIter; g.Generation++ {
 		g.Option.Trigger(g)
 		GAsSelect(g)
 		GAsCrossover(g)
 		GAsMutate(g)
 		GAsFitnessMessure(g)
-		GAsFitnessScaling(g)
 	}
 }
