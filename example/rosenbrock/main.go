@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"math"
 
 	"github.com/mohanson/doa"
@@ -46,15 +45,6 @@ func main() {
 			PM:         0.001,
 			Fitness: func(g *ga.Genemo) float64 {
 				return f(genemoDecode(g))
-			},
-			Trigger: func(g *ga.GAs) {
-				if g.Generation%10 == 0 {
-					log.Println("Generation", g.Generation)
-					i := ga.FindArgMax(g.Fitness)
-					individual := g.Population[i]
-					x, y := genemoDecode(individual)
-					log.Printf("Individual x=%f y=%f rosenbrock=%f\n", x, y, g.Option.Fitness(individual))
-				}
 			},
 		},
 	}
