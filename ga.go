@@ -14,14 +14,14 @@ type Genemo struct {
 }
 
 // Copy Genome.
-func (g *Genemo) Copy() *Genemo {
+func (g Genemo) Copy() Genemo {
 	d := make([]uint64, g.Size())
 	copy(d, g.Locus)
-	return &Genemo{d}
+	return Genemo{d}
 }
 
 // Size returns size of genemo.
-func (g *Genemo) Size() int {
+func (g Genemo) Size() int {
 	return len(g.Locus)
 }
 
@@ -43,7 +43,8 @@ type GAsOption struct {
 	// Necessary parameters. Fitness scaling type.
 	FitnessScaling int
 
-	// Seed of random number generator.
+	// Seed of random number generator. If it is 0, it will be treated as 1, which is consistent with Golang's default
+	// behavior.
 	Seed int64
 
 	// A callback function is triggered every time a new generation is generated.
@@ -54,10 +55,10 @@ type GAsOption struct {
 type GAs struct {
 	Option                GAsOption
 	Generation            int
-	Population            []*Genemo
-	BestIndividual        *Genemo
-	BestIndividualFieness float64
+	Population            []Genemo
 	Fitness               []float64
+	BestIndividual        Genemo
+	BestIndividualFieness float64
 }
 
 // The population size depends on the nature of the problem, but typically contains several hundreds or thousands of
@@ -65,29 +66,25 @@ type GAs struct {
 // solutions (the search space). Occasionally, the solutions may be "seeded" in areas where optimal solutions are
 // likely to be found.
 func GAsInitialize(g *GAs) {
-	g.Population = make([]*Genemo, g.Option.PopSize)
+	g.Population = make([]Genemo, g.Option.PopSize)
 	g.Fitness = make([]float64, g.Option.PopSize)
 	for i := 0; i < g.Option.PopSize; i++ {
 		locus := make([]uint64, g.Option.GenemoSize)
 		for j := 0; j < g.Option.GenemoSize; j++ {
 			locus[j] = rand.Uint64()
 		}
-		g.Population[i] = &Genemo{Locus: locus}
+		g.Population[i] = Genemo{Locus: locus}
 	}
 }
 
 // Measure the fitness of each individual.
 func GAsFitnessMessure(g *GAs) {
 	for i := 0; i < g.Option.PopSize; i++ {
-		f := g.Option.Fitness(g.Population[i])
+		f := g.Option.Fitness(&g.Population[i])
 		g.Fitness[i] = f
 	}
 	i := FindArgMax(g.Fitness)
-	if g.BestIndividual == nil {
-		g.BestIndividual = g.Population[i].Copy()
-		g.BestIndividualFieness = g.Fitness[i]
-	}
-	if g.Fitness[i] > g.BestIndividualFieness {
+	if g.Generation == 0 || g.Fitness[i] > g.BestIndividualFieness {
 		g.BestIndividual = g.Population[i].Copy()
 		g.BestIndividualFieness = g.Fitness[i]
 	}
@@ -145,7 +142,7 @@ func GAsSelect(g *GAs) {
 	for i := 0; i < g.Option.PopSize; i++ {
 		cntFitness += g.Fitness[i]
 	}
-	generation := make([]*Genemo, g.Option.PopSize)
+	generation := make([]Genemo, g.Option.PopSize)
 	for i := 0; i < g.Option.PopSize; i++ {
 		bullet := rand.Float64() * cntFitness
 		for j := 0; j < g.Option.PopSize; j++ {
