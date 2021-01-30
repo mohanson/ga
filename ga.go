@@ -43,6 +43,10 @@ type GAsOption struct {
 	// Necessary parameters. Fitness scaling type.
 	FitnessScaling int
 
+	// The optimal retention strategy refers to the selection, crossover and mutation of the best individuals in the
+	// group directly into the next generation to avoid the loss of outstanding individuals.
+	MaintainTheBestIndividual bool
+
 	// Seed of random number generator. If it is 0, it will be treated as 1, which is consistent with Golang's default
 	// behavior.
 	Seed int64
@@ -87,6 +91,11 @@ func GAsFitnessMessure(g *GAs) {
 	if g.Generation == 0 || g.Fitness[i] > g.BestIndividualFieness {
 		g.BestIndividual = g.Population[i].Copy()
 		g.BestIndividualFieness = g.Fitness[i]
+	}
+	if g.Option.MaintainTheBestIndividual {
+		i := FindArgMin(g.Fitness)
+		g.Population[i] = g.BestIndividual.Copy()
+		g.Fitness[i] = g.BestIndividualFieness
 	}
 }
 
