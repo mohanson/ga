@@ -5,7 +5,7 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/mohanson/doa"
+	"github.com/godump/doa"
 )
 
 // Genome is all genetic material of an organism.
@@ -46,10 +46,6 @@ type GAsOption struct {
 	// The optimal retention strategy refers to the selection, crossover and mutation of the best individuals in the
 	// group directly into the next generation to avoid the loss of outstanding individuals.
 	MaintainTheBestIndividual bool
-
-	// Seed of random number generator. If it is 0, it will be treated as 1, which is consistent with Golang's default
-	// behavior.
-	Seed int64
 
 	// A callback function is triggered every time a new generation is generated.
 	Trigger func(*GAs)
@@ -105,7 +101,7 @@ func GAsFitnessMessure(g *GAs) {
 // preferentially select the best solutions. Other methods rate only a random sample of the population, as the former
 // process may be very time-consuming.
 func GAsSelect(g *GAs) {
-	doa.Doa1(g.Option.SelectionOperator < 3)
+	doa.Doa(g.Option.SelectionOperator < 3)
 	switch g.Option.SelectionOperator {
 	case 0:
 		GAsSelectRanked(g)
@@ -226,10 +222,7 @@ func GAsMutate(g *GAs) {
 
 // Start a cruel survival competition.
 func (g *GAs) Run() {
-	doa.Doa1(g.Option.PopSize&1 == 0)
-	if g.Option.Seed != 0 {
-		rand.Seed(g.Option.Seed)
-	}
+	doa.Doa(g.Option.PopSize&1 == 0)
 	if g.Option.Trigger == nil {
 		g.Option.Trigger = func(g *GAs) {
 			log.Printf("G=%d F=%f\n", g.Generation, g.BestIndividualFieness)

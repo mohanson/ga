@@ -3,7 +3,7 @@ package main
 import (
 	"math"
 
-	"github.com/mohanson/doa"
+	"github.com/godump/doa"
 	"github.com/mohanson/ga"
 )
 
@@ -16,8 +16,8 @@ import (
 // F(-2.048, -2.048) = 3905.9262
 
 func f(x float64, y float64) float64 {
-	doa.Doa2(x >= -2.048, x <= 2.048)
-	doa.Doa2(y >= -2.048, y <= 2.048)
+	doa.Doa(math.Abs(x) <= 2.048)
+	doa.Doa(math.Abs(y) <= 2.048)
 	return 100*math.Pow(math.Pow(x, 2)-y, 2) + math.Pow(1-x, 2)
 }
 

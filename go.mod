@@ -1,5 +1,5 @@
 module github.com/mohanson/ga
 
-go 1.15
+go 1.20
 
-require github.com/mohanson/doa v0.0.0-20210110060319-44d367da3ecb
+require github.com/godump/doa v0.1.3

@@ -1,2 +1,2 @@
-github.com/mohanson/doa v0.0.0-20210110060319-44d367da3ecb h1:u9np6Hq53dU6qjoelLApC7/rQW5E6ii28jX5I1mu+Zk=
-github.com/mohanson/doa v0.0.0-20210110060319-44d367da3ecb/go.mod h1:HKQ6V1vOcd+H4giXI8HFM08xPJLJHUhhSGlZAMz/T7k=
+github.com/godump/doa v0.1.3 h1:zedWs+kag2epLpCr3TyGFiZr6LbGnmIDSxwH979nYV4=
+github.com/godump/doa v0.1.3/go.mod h1:a3ECk/aqWBm9dR74TgcPYRZ6ZKkz/R0qIjhGSKxmWhM=
