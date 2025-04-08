@@ -5,7 +5,7 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/godump/doa"
+	"github.com/mohanson/ga/lib/doa"
 )
 
 // Genome is all genetic material of an organism.

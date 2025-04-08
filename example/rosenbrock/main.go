@@ -3,8 +3,8 @@ package main
 import (
 	"math"
 
-	"github.com/godump/doa"
 	"github.com/mohanson/ga"
+	"github.com/mohanson/ga/lib/doa"
 )
 
 // In mathematical optimization, the Rosenbrock function is a non-convex function, introduced by Howard H. Rosenbrock
@@ -12,7 +12,7 @@ import (
 // Rosenbrock's valley or Rosenbrock's banana function.
 //
 // F(x, y) = 100(x² - y)² + (1 - x)², x, y ∈ [-2.048, 2.048]
-// F( 2.048, -2.048) = 3897.7342
+// F(+2.048, -2.048) = 3897.7342
 // F(-2.048, -2.048) = 3905.9262
 
 func f(x float64, y float64) float64 {
